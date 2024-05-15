@@ -139,6 +139,7 @@ def GPT4t_response(text, user_id):
 
 @bot.tree.command(name="chat", description="喜多喜多")
 async def chat(interaction: discord.Interaction, message: str):
+    await interaction.response.defer()  # 延長響應時間
     user_id = interaction.user.id
     
     if current_model == "GPT3t":
@@ -148,7 +149,7 @@ async def chat(interaction: discord.Interaction, message: str):
     else:
         response = GPT4t_response(message, user_id)
     
-    await interaction.response.send_message(f"目前模型: {current_model}\n\n{response}")
+    await interaction.followup.send(f"目前模型: {current_model}\n\n{response}")
 
 #---------------------------------------------------------------------------------------------------------------------
 
