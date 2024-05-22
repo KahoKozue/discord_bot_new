@@ -1232,11 +1232,16 @@ async def search_image(image_url):
         'url': image_url
     }
     async with aiohttp.ClientSession() as session:
-        async with session.get('https://saucenao.com/search.php', params=params) as response:
-            if response.status == 200:
-                return await response.json()
-            else:
-                return '搜圖錯誤(30秒4次only)'
+        try:
+            async with session.get('https://saucenao.com/search.php', params=params) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    print(f"Error: Received status code {response.status}")
+                    return {'error': '搜圖錯誤(30秒4次only)'}
+        except Exception as e:
+            print(f"Exception occurred: {e}")
+            return {'error': 'API請求失敗'}
 
 async def send_embed_results(message, results):
     key_mapping = {
@@ -1263,6 +1268,10 @@ async def send_embed_results(message, results):
         'eng_name': '英文名',
         'jp_name': '日文名'
     }
+
+    if 'error' in results:
+        await message.channel.send(results['error'])
+        return
 
     for result in results.get('results', []):
         embed = Embed(title="搜圖結果", color=0x1e90ff)
