@@ -92,7 +92,7 @@ def GPT4o_image_response(image_url, user_id):
         {
             "role": "user",
             "content": [
-                {"type": "text", "text": "盡可能詳細描述這張圖，有文字就寫出來，如果非中文就把它翻譯成繁體中文"},
+                {"type": "text", "text": "盡可能詳細描述這張圖，有文字就寫出來並翻譯成繁體中文，如果有題目就把題目全部答完"},
                 {
                     "type": "image_url",
                     "image_url": {
