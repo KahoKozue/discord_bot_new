@@ -35,21 +35,19 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 current_model = "GPT4o"
-conversation_history = {}
+conversation_history = []  # 共用的對話紀錄列表
 
 #---------------------------------------------------------------------------------------------------------------------
 
-def GPT3t_response(text, user_id):
+def GPT_response(model, text):
     client = openai.Client(api_key=OPENAI_API_KEY)
     
-    if user_id not in conversation_history:
-        conversation_history[user_id] = []
-    
-    conversation_history[user_id].append({"role": "user", "content": text})
+    # 添加用戶輸入到對話紀錄
+    conversation_history.append({"role": "user", "content": text})
     
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=conversation_history[user_id][-5:],  # 只發最近的 5 條對話記錄
+        model=model,
+        messages=conversation_history[-5:],  # 只發最近的 5 條對話記錄
         temperature=1,
         max_tokens=4096,
         top_p=1,
@@ -58,34 +56,23 @@ def GPT3t_response(text, user_id):
     )
     
     answer = response.choices[0].message.content
-    conversation_history[user_id].append({"role": "assistant", "content": answer})
+    
+    # 添加助手回應到對話紀錄
+    conversation_history.append({"role": "assistant", "content": answer})
     
     return answer
 
-def GPT4o_response(text, user_id):
-    client = openai.Client(api_key=OPENAI_API_KEY)
-    
-    if user_id not in conversation_history:
-        conversation_history[user_id] = []
-    
-    conversation_history[user_id].append({"role": "user", "content": text})
-    
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=conversation_history[user_id][-5:],  # 只發最近的 5 條對話記錄
-        temperature=1,
-        max_tokens=4096,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-    )
-    
-    answer = response.choices[0].message.content
-    conversation_history[user_id].append({"role": "assistant", "content": answer})
-    
-    return answer
+# 根據不同模型使用 GPT_response 函數
+def GPT3t_response(text):
+    return GPT_response("gpt-3.5-turbo", text)
 
-def GPT4o_image_response(image_url, user_id):
+def GPT4o_response(text):
+    return GPT_response("gpt-4o", text)
+
+def GPT4t_response(text):
+    return GPT_response("gpt-4-turbo", text)
+
+def GPT4o_image_response(image_url):
     client = openai.Client(api_key=OPENAI_API_KEY)
     
     messages = [
@@ -112,42 +99,18 @@ def GPT4o_image_response(image_url, user_id):
     answer = response.choices[0].message.content
     return answer
 
-def GPT4t_response(text, user_id):
-    client = openai.Client(api_key=OPENAI_API_KEY)
-    
-    if user_id not in conversation_history:
-        conversation_history[user_id] = []
-    
-    conversation_history[user_id].append({"role": "user", "content": text})
-    
-    response = client.chat.completions.create(
-        model="gpt-4-turbo",
-        messages=conversation_history[user_id][-5:],  # 只發最近的 5 條對話記錄
-        temperature=1,
-        max_tokens=4096,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-    )
-    
-    answer = response.choices[0].message.content
-    conversation_history[user_id].append({"role": "assistant", "content": answer})
-    
-    return answer
-
 #---------------------------------------------------------------------------------------------------------------------
 
 @bot.tree.command(name="chat", description="喜多喜多")
 async def chat(interaction: discord.Interaction, message: str):
     await interaction.response.defer()  # 延長響應時間
-    user_id = interaction.user.id
     
     if current_model == "GPT3t":
-        response = GPT3t_response(message, user_id)
+        response = GPT3t_response(message)
     elif current_model == "GPT4o":
-        response = GPT4o_response(message, user_id)
+        response = GPT4o_response(message)
     else:
-        response = GPT4t_response(message, user_id)
+        response = GPT4t_response(message)
     
     await interaction.followup.send(f"目前模型: {current_model}\n\n{response}")
 
@@ -167,14 +130,10 @@ async def chat_model(interaction: discord.Interaction, choices: app_commands.Cho
 #---------------------------------------------------------------------------------------------------------------------
 
 @bot.tree.command(name="reset", description="重製上下文")
-async def clear(interaction: discord.Interaction):
-    user_id = interaction.user.id
-    
-    if user_id in conversation_history:
-        conversation_history[user_id] = []
-        await interaction.response.send_message("上下文已重製。")
-    else:
-        await interaction.response.send_message("無上下文。")
+async def clear_all(interaction: discord.Interaction):
+    global conversation_history
+    conversation_history = []
+    await interaction.response.send_message("上下文已重製。")
 
 #---------------------------------------------------------------------------------------------------------------------
 
@@ -504,12 +463,12 @@ async def on_message(message):
             for attachment in message.attachments:
                 if any(attachment.filename.lower().endswith(ext) for ext in ['jpg', 'jpeg', 'png', 'gif']):
                     image_url = attachment.url
-                    response = GPT4o_image_response(image_url, message.author.id)
+                    response = GPT4o_image_response(image_url)
                     await message.channel.send(response)
                     return
         elif content.startswith('http'):
             # 處理圖像鏈接
-            response = GPT4o_image_response(content, message.author.id)
+            response = GPT4o_image_response(content)
             await message.channel.send(response)
         else:
             await message.channel.send('圖呢?')
