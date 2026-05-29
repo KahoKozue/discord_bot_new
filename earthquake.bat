@@ -1,0 +1,1 @@
+curl -X POST -d "magnitude=%1&seconds_to_arrival=%2" http://127.0.0.1:12345/earthquake
